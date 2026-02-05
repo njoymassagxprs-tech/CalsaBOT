@@ -1,0 +1,42 @@
+# ═══════════════════════════════════════════════════════════
+# CalsaBOT - Ficheiros a Ignorar pelo Git
+# ═══════════════════════════════════════════════════════════
+
+# Dependências
+node_modules/
+
+# Variáveis de ambiente (contém chaves secretas!)
+.env
+.env.local
+.env.production
+
+# Logs
+*.log
+memory/*.log
+
+# Ficheiros gerados
+Documentos/eventos/*.pdf
+Documentos/notas/*.txt
+outputs/*
+temp/*
+!outputs/.gitkeep
+!temp/.gitkeep
+
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testes
+coverage/
+.nyc_output/
+
+# Build
+dist/
+build/
