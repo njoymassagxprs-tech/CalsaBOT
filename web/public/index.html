@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#667eea">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>🎤 CalsaBOT Voice</title>
+  <link rel="manifest" href="/manifest.json">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      color: white;
+    }
+    
+    .container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      width: 100%;
+    }
+    
+    header {
+      text-align: center;
+      padding: 20px 0;
+    }
+    
+    header h1 {
+      font-size: 2rem;
+      margin-bottom: 5px;
+    }
+    
+    header p {
+      opacity: 0.8;
+      font-size: 0.9rem;
+    }
+    
+    .chat-container {
+      flex: 1;
+      background: rgba(255,255,255,0.1);
+      border-radius: 20px;
+      padding: 15px;
+      margin: 20px 0;
+      overflow-y: auto;
+      max-height: 50vh;
+      backdrop-filter: blur(10px);
+    }
+    
+    .message {
+      margin: 10px 0;
+      padding: 12px 16px;
+      border-radius: 18px;
+      max-width: 85%;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .message.user {
+      background: rgba(255,255,255,0.9);
+      color: #333;
+      margin-left: auto;
+      border-bottom-right-radius: 5px;
+    }
+    
+    .message.bot {
+      background: rgba(0,0,0,0.3);
+      color: white;
+      margin-right: auto;
+      border-bottom-left-radius: 5px;
+    }
+    
+    .message .sender {
+      font-size: 0.7rem;
+      opacity: 0.7;
+      margin-bottom: 5px;
+    }
+    
+    .voice-section {
+      text-align: center;
+      padding: 30px 0;
+    }
+    
+    .mic-button {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      border: none;
+      background: white;
+      color: #667eea;
+      font-size: 3rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .mic-button:hover {
+      transform: scale(1.05);
+    }
+    
+    .mic-button:active {
+      transform: scale(0.95);
+    }
+    
+    .mic-button.listening {
+      background: #ff4757;
+      color: white;
+      animation: pulse 1.5s infinite;
+    }
+    
+    .mic-button.processing {
+      background: #ffa502;
+      color: white;
+    }
+    
+    .mic-button.speaking {
+      background: #2ed573;
+      color: white;
+    }
+    
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }
+      70% { box-shadow: 0 0 0 30px rgba(255, 71, 87, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
+    }
+    
+    .status {
+      margin-top: 20px;
+      font-size: 1.1rem;
+      opacity: 0.9;
+    }
+    
+    .text-input {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    
+    .text-input input {
+      flex: 1;
+      padding: 15px 20px;
+      border: none;
+      border-radius: 25px;
+      font-size: 1rem;
+      background: rgba(255,255,255,0.9);
+      color: #333;
+    }
+    
+    .text-input input:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(255,255,255,0.5);
+    }
+    
+    .text-input button {
+      padding: 15px 25px;
+      border: none;
+      border-radius: 25px;
+      background: white;
+      color: #667eea;
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    
+    .text-input button:hover {
+      transform: scale(1.05);
+    }
+    
+    .settings {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+    }
+    
+    .settings button {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      padding: 10px;
+      border-radius: 50%;
+      color: white;
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
+    
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.8);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    
+    .modal.show {
+      display: flex;
+    }
+    
+    .modal-content {
+      background: white;
+      color: #333;
+      padding: 30px;
+      border-radius: 20px;
+      max-width: 400px;
+      width: 90%;
+    }
+    
+    .modal-content h3 {
+      margin-bottom: 20px;
+    }
+    
+    .modal-content label {
+      display: block;
+      margin: 15px 0 5px;
+      font-weight: 500;
+    }
+    
+    .modal-content select {
+      width: 100%;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid #ddd;
+      font-size: 1rem;
+    }
+    
+    .modal-content button {
+      margin-top: 20px;
+      padding: 12px 30px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    
+    .unsupported {
+      background: #ff4757;
+      padding: 15px;
+      border-radius: 10px;
+      margin: 20px 0;
+      text-align: center;
+    }
+    
+    footer {
+      text-align: center;
+      padding: 15px;
+      opacity: 0.7;
+      font-size: 0.8rem;
+    }
+    
+    footer a {
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div class="settings">
+    <button onclick="showSettings()" title="Configurações">⚙️</button>
+  </div>
+  
+  <div class="container">
+    <header>
+      <h1>🤖 CalsaBOT</h1>
+      <p>Assistente de Voz Inteligente</p>
+    </header>
+    
+    <div id="unsupported" class="unsupported" style="display: none;">
+      ⚠️ O teu browser não suporta reconhecimento de voz.<br>
+      Usa Chrome, Edge ou Safari.
+    </div>
+    
+    <div class="chat-container" id="chat">
+      <div class="message bot">
+        <div class="sender">🤖 CalsaBOT</div>
+        Olá! Carrega no microfone e fala comigo, ou escreve uma mensagem.
+      </div>
+    </div>
+    
+    <div class="voice-section">
+      <button class="mic-button" id="micButton" onclick="toggleListening()">
+        🎤
+      </button>
+      <p class="status" id="status">Carrega para falar</p>
+    </div>
+    
+    <div class="text-input">
+      <input type="text" id="textInput" placeholder="Ou escreve aqui..." 
+             onkeypress="if(event.key==='Enter') sendText()">
+      <button onclick="sendText()">📤</button>
+    </div>
+  </div>
+  
+  <footer>
+    <a href="https://buy.stripe.com/cNicN5c2neYg7FPbAyes004" target="_blank">☕ Apoiar o CalsaBOT</a>
+  </footer>
+  
+  <!-- Modal de Configurações -->
+  <div class="modal" id="settingsModal">
+    <div class="modal-content">
+      <h3>⚙️ Configurações</h3>
+      
+      <label for="voiceSelect">Voz:</label>
+      <select id="voiceSelect"></select>
+      
+      <label for="langSelect">Idioma de Reconhecimento:</label>
+      <select id="langSelect">
+        <option value="pt-PT">Português (Portugal)</option>
+        <option value="pt-BR">Português (Brasil)</option>
+        <option value="en-US">English (US)</option>
+        <option value="es-ES">Español</option>
+      </select>
+      
+      <label for="autoSpeak">
+        <input type="checkbox" id="autoSpeak" checked> Ler respostas em voz alta
+      </label>
+      
+      <button onclick="closeSettings()">Guardar</button>
+    </div>
+  </div>
+  
+  <script>
+    // ═══════════════════════════════════════════════════════════
+    // VARIÁVEIS GLOBAIS
+    // ═══════════════════════════════════════════════════════════
+    
+    let recognition = null;
+    let synthesis = window.speechSynthesis;
+    let isListening = false;
+    let selectedVoice = null;
+    let voices = [];
+    
+    const micButton = document.getElementById('micButton');
+    const status = document.getElementById('status');
+    const chat = document.getElementById('chat');
+    const textInput = document.getElementById('textInput');
+    
+    // ═══════════════════════════════════════════════════════════
+    // INICIALIZAÇÃO
+    // ═══════════════════════════════════════════════════════════
+    
+    window.onload = function() {
+      // Verificar suporte
+      if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        document.getElementById('unsupported').style.display = 'block';
+        micButton.disabled = true;
+        micButton.style.opacity = 0.5;
+      } else {
+        initSpeechRecognition();
+      }
+      
+      // Carregar vozes
+      loadVoices();
+      if (synthesis.onvoiceschanged !== undefined) {
+        synthesis.onvoiceschanged = loadVoices;
+      }
+      
+      // Gerar ID único para este utilizador
+      if (!localStorage.getItem('calsabot_user_id')) {
+        localStorage.setItem('calsabot_user_id', 'web_' + Date.now());
+      }
+    };
+    
+    function loadVoices() {
+      voices = synthesis.getVoices();
+      const voiceSelect = document.getElementById('voiceSelect');
+      voiceSelect.innerHTML = '';
+      
+      // Filtrar vozes portuguesas primeiro
+      const ptVoices = voices.filter(v => v.lang.startsWith('pt'));
+      const otherVoices = voices.filter(v => !v.lang.startsWith('pt'));
+      
+      [...ptVoices, ...otherVoices].forEach((voice, i) => {
+        const option = document.createElement('option');
+        option.value = i;
+        option.textContent = `${voice.name} (${voice.lang})`;
+        if (voice.lang === 'pt-PT' && !selectedVoice) {
+          option.selected = true;
+          selectedVoice = voice;
+        }
+        voiceSelect.appendChild(option);
+      });
+      
+      voiceSelect.onchange = () => {
+        selectedVoice = voices[voiceSelect.value];
+      };
+    }
+    
+    function initSpeechRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = 'pt-PT';
+      
+      recognition.onstart = () => {
+        isListening = true;
+        micButton.classList.add('listening');
+        micButton.textContent = '🔴';
+        status.textContent = 'A ouvir... Fala agora!';
+      };
+      
+      recognition.onend = () => {
+        isListening = false;
+        micButton.classList.remove('listening');
+        micButton.textContent = '🎤';
+        status.textContent = 'Carrega para falar';
+      };
+      
+      recognition.onresult = (event) => {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        
+        // Se for resultado final
+        if (event.results[event.results.length - 1].isFinal) {
+          processMessage(transcript);
+        } else {
+          status.textContent = transcript;
+        }
+      };
+      
+      recognition.onerror = (event) => {
+        console.error('Erro:', event.error);
+        isListening = false;
+        micButton.classList.remove('listening');
+        micButton.textContent = '🎤';
+        
+        if (event.error === 'no-speech') {
+          status.textContent = 'Não ouvi nada. Tenta novamente.';
+        } else if (event.error === 'not-allowed') {
+          status.textContent = '⚠️ Permite acesso ao microfone';
+        } else {
+          status.textContent = 'Erro: ' + event.error;
+        }
+      };
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // FUNÇÕES PRINCIPAIS
+    // ═══════════════════════════════════════════════════════════
+    
+    function toggleListening() {
+      if (isListening) {
+        recognition.stop();
+      } else {
+        // Parar qualquer fala em progresso
+        synthesis.cancel();
+        recognition.lang = document.getElementById('langSelect').value;
+        recognition.start();
+      }
+    }
+    
+    function sendText() {
+      const text = textInput.value.trim();
+      if (text) {
+        processMessage(text);
+        textInput.value = '';
+      }
+    }
+    
+    async function processMessage(message) {
+      // Adicionar mensagem do utilizador ao chat
+      addMessage(message, 'user');
+      
+      // Atualizar UI
+      micButton.classList.add('processing');
+      micButton.textContent = '⏳';
+      status.textContent = 'A processar...';
+      
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: message,
+            userId: localStorage.getItem('calsabot_user_id')
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          // Adicionar resposta ao chat
+          addMessage(data.response, 'bot');
+          
+          // Ler em voz alta se ativado
+          if (document.getElementById('autoSpeak').checked) {
+            speak(data.response);
+          } else {
+            resetMicButton();
+          }
+        } else {
+          addMessage('Erro: ' + data.error, 'bot');
+          resetMicButton();
+        }
+        
+      } catch (error) {
+        console.error('Erro:', error);
+        addMessage('Erro de conexão. Verifica se o servidor está ativo.', 'bot');
+        resetMicButton();
+      }
+    }
+    
+    function addMessage(text, sender) {
+      const div = document.createElement('div');
+      div.className = `message ${sender}`;
+      div.innerHTML = `
+        <div class="sender">${sender === 'user' ? '👤 Tu' : '🤖 CalsaBOT'}</div>
+        ${text.replace(/\n/g, '<br>')}
+      `;
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+    }
+    
+    function speak(text) {
+      // Limpar markdown e emojis excessivos
+      const cleanText = text
+        .replace(/[#*_`]/g, '')
+        .replace(/\n+/g, '. ')
+        .substring(0, 500); // Limitar tamanho
+      
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      utterance.voice = selectedVoice || voices.find(v => v.lang.startsWith('pt')) || voices[0];
+      utterance.lang = 'pt-PT';
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+      
+      utterance.onstart = () => {
+        micButton.classList.remove('processing');
+        micButton.classList.add('speaking');
+        micButton.textContent = '🔊';
+        status.textContent = 'A falar...';
+      };
+      
+      utterance.onend = () => {
+        resetMicButton();
+      };
+      
+      utterance.onerror = () => {
+        resetMicButton();
+      };
+      
+      synthesis.speak(utterance);
+    }
+    
+    function resetMicButton() {
+      micButton.classList.remove('processing', 'speaking', 'listening');
+      micButton.textContent = '🎤';
+      status.textContent = 'Carrega para falar';
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // CONFIGURAÇÕES
+    // ═══════════════════════════════════════════════════════════
+    
+    function showSettings() {
+      document.getElementById('settingsModal').classList.add('show');
+    }
+    
+    function closeSettings() {
+      document.getElementById('settingsModal').classList.remove('show');
+    }
+  </script>
+</body>
+</html>

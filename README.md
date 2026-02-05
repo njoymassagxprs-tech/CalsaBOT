@@ -12,8 +12,10 @@ Usa IA (Groq/LLaMA) para responder perguntas, criar PDFs, executar código e mui
 |----------------|-----------|
 | 🧠 **Chat IA** | Respostas inteligentes via Groq (LLaMA 3.3 70B) |
 | 📄 **Criar PDFs** | Gera documentos PDF com conteúdo AI |
+| 🎤 **Interface Voz** | Fala com o bot - funciona em qualquer dispositivo! |
 | 📱 **Telegram Bot** | Interface via Telegram |
 | 💬 **WhatsApp Bot** | Interface via Twilio WhatsApp |
+| 🎮 **Discord Bot** | Interface via Discord |
 | 🤖 **Reddit Bot** | Integração com Reddit API |
 | 💻 **CLI** | Interface de linha de comandos |
 | ⚡ **Executar Código** | Executa JavaScript em sandbox segura |
