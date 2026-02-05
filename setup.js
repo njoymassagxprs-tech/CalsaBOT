@@ -85,6 +85,56 @@ const CONFIG = {
       '3. (O número do sandbox é sempre o mesmo)'
     ]
   },
+  reddit_client_id: {
+    name: 'Reddit Client ID',
+    description: 'Bot/App Reddit',
+    url: 'https://www.reddit.com/prefs/apps',
+    required: false,
+    envKey: 'REDDIT_CLIENT_ID',
+    pattern: /^[a-zA-Z0-9_-]{14,30}$/,
+    instructions: [
+      '1. Vai a reddit.com/prefs/apps',
+      '2. Clica "create another app..."',
+      '3. Nome: CalsaBOT, Tipo: script',
+      '4. Redirect URI: http://localhost:8080',
+      '5. Copia o ID abaixo do nome da app'
+    ]
+  },
+  reddit_secret: {
+    name: 'Reddit Client Secret',
+    description: 'Secret da App Reddit',
+    url: null,
+    required: false,
+    envKey: 'REDDIT_CLIENT_SECRET',
+    pattern: /^[a-zA-Z0-9_-]{20,40}$/,
+    instructions: [
+      '1. Na mesma página da app Reddit',
+      '2. Copia o "secret" (abaixo do client ID)'
+    ]
+  },
+  reddit_username: {
+    name: 'Reddit Username',
+    description: 'Teu username Reddit',
+    url: null,
+    required: false,
+    envKey: 'REDDIT_USERNAME',
+    pattern: /^[a-zA-Z0-9_-]{3,20}$/,
+    instructions: [
+      '1. O teu username do Reddit (sem u/)'
+    ]
+  },
+  reddit_password: {
+    name: 'Reddit Password',
+    description: 'Password da conta Reddit',
+    url: null,
+    required: false,
+    envKey: 'REDDIT_PASSWORD',
+    pattern: /^.{6,}$/,
+    instructions: [
+      '1. A password da tua conta Reddit',
+      '⚠️ Recomendado: Usa uma conta secundária para bots'
+    ]
+  },
   openai: {
     name: 'OpenAI API',
     description: 'GPT-4 / ChatGPT (Opcional)',
@@ -392,6 +442,17 @@ OPENAI_API_KEY=${envConfig.OPENAI_API_KEY}
 `;
   }
   
+  // Reddit
+  if (envConfig.REDDIT_CLIENT_ID) {
+    content += `# Reddit Bot
+REDDIT_CLIENT_ID=${envConfig.REDDIT_CLIENT_ID}
+REDDIT_CLIENT_SECRET=${envConfig.REDDIT_CLIENT_SECRET || ''}
+REDDIT_USERNAME=${envConfig.REDDIT_USERNAME || ''}
+REDDIT_PASSWORD=${envConfig.REDDIT_PASSWORD || ''}
+
+`;
+  }
+  
   fs.writeFileSync(envPath, content, 'utf-8');
   console.log(c.ok(`   ✅ Ficheiro .env criado com sucesso!`));
 }
@@ -440,7 +501,7 @@ async function main() {
   if (mode === '2') {
     steps = ['groq', 'telegram'];
   } else if (mode === '3') {
-    steps = ['groq', 'telegram', 'twilio_sid', 'twilio_token', 'twilio_number', 'openai'];
+    steps = ['groq', 'telegram', 'twilio_sid', 'twilio_token', 'twilio_number', 'reddit_client_id', 'reddit_secret', 'reddit_username', 'reddit_password', 'openai'];
   }
   
   // Executar steps

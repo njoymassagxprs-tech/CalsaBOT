@@ -14,6 +14,7 @@ Usa IA (Groq/LLaMA) para responder perguntas, criar PDFs, executar código e mui
 | 📄 **Criar PDFs** | Gera documentos PDF com conteúdo AI |
 | 📱 **Telegram Bot** | Interface via Telegram |
 | 💬 **WhatsApp Bot** | Interface via Twilio WhatsApp |
+| 🤖 **Reddit Bot** | Integração com Reddit API |
 | 💻 **CLI** | Interface de linha de comandos |
 | ⚡ **Executar Código** | Executa JavaScript em sandbox segura |
 | 📁 **Gestão Ficheiros** | Cria notas, lista ficheiros |
