@@ -118,10 +118,97 @@ Data: ${new Date().toLocaleString('pt-PT')}
 Gerado por: CalsaBOT`;
 }
 
+/**
+ * 🚀 Gerar preview do PDF em memória (mais rápido para PDFs grandes)
+ * Retorna base64 do PDF sem escrever no disco primeiro
+ */
+async function createPDFPreview(prompt) {
+  const userId = security.getUserId({});
+  let content = '';
+  
+  try {
+    content = await aiAgent.generateContent(prompt, 'documento PDF');
+    if (!content || content.startsWith('⚠️')) {
+      content = generateFallback(prompt);
+    }
+  } catch (err) {
+    content = generateFallback(prompt);
+  }
+  
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new PDFDocument({ margin: 50, size: 'A4' });
+      const chunks = [];
+      
+      doc.on('data', chunk => chunks.push(chunk));
+      doc.on('end', () => {
+        const pdfBuffer = Buffer.concat(chunks);
+        const base64 = pdfBuffer.toString('base64');
+        
+        security.logAction(userId, 'pdf-preview', { size: pdfBuffer.length });
+        
+        resolve({
+          base64,
+          mimeType: 'application/pdf',
+          size: pdfBuffer.length,
+          preview: content.substring(0, 200) + '...'
+        });
+      });
+      doc.on('error', reject);
+      
+      // Header
+      doc.fontSize(20).font('Helvetica-Bold').text('CalsaBOT - Preview', { align: 'center' });
+      doc.moveDown();
+      doc.fontSize(10).font('Helvetica').text(`Gerado em: ${new Date().toLocaleString('pt-PT')}`, { align: 'center' });
+      doc.moveDown(2);
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke();
+      doc.moveDown();
+      
+      // Conteúdo (primeiras 500 palavras para preview rápido)
+      const previewContent = content.split(/\s+/).slice(0, 500).join(' ');
+      doc.fontSize(12).font('Helvetica').text(previewContent, { align: 'justify', lineGap: 4 });
+      
+      doc.end();
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+/**
+ * 🚀 Gerar PDF completo a partir do preview (quando confirmado)
+ */
+async function savePDFFromPreview(base64Data, folder = './Documentos/eventos') {
+  const userId = security.getUserId({});
+  const fileName = `pdf_${Date.now()}.pdf`;
+  
+  let finalFolder = folder;
+  try {
+    security.validateFilePath(path.resolve(folder), 'write');
+  } catch (err) {
+    finalFolder = path.join(__dirname, '..', 'Documentos', 'eventos');
+  }
+  
+  const finalDirPath = path.resolve(finalFolder);
+  if (!fs.existsSync(finalDirPath)) {
+    fs.mkdirSync(finalDirPath, { recursive: true });
+  }
+  
+  const filePath = path.join(finalDirPath, fileName);
+  const buffer = Buffer.from(base64Data, 'base64');
+  
+  fs.writeFileSync(filePath, buffer);
+  security.logAction(userId, 'pdf-saved-from-preview', { path: filePath });
+  
+  return filePath;
+}
+
 // Alias para compatibilidade
 const generatePDF = createPDF;
 
 module.exports = { 
   createPDF,
-  generatePDF  // Manter alias para CLI existente
+  generatePDF,  // Manter alias para CLI existente
+  createPDFPreview,
+  savePDFFromPreview
 };

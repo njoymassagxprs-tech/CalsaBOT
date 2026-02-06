@@ -9,11 +9,25 @@ const readline = require('readline');
 const { handlePrompt } = require('../orchestrator/router');
 const security = require('../orchestrator/security');
 
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 const userId = security.getUserId({});
 
-console.log(`
-╔═══════════════════════════════════════════════════════════╗
+// 🌙 Dark Mode - cores adaptadas para terminal escuro
+const DARK_MODE = process.env.CALSABOT_DARK !== 'false'; // Ativo por defeito
+const colors = {
+  reset: '\x1b[0m',
+  bright: '\x1b[1m',
+  dim: '\x1b[2m',
+  cyan: '\x1b[36m',
+  yellow: '\x1b[33m',
+  green: '\x1b[32m',
+  red: '\x1b[31m',
+  bgDark: DARK_MODE ? '\x1b[40m' : '',
+  fgLight: DARK_MODE ? '\x1b[97m' : ''
+};
+
+const banner = `
+${colors.bgDark}${colors.cyan}╔═══════════════════════════════════════════════════════════╗
 ║                    🤖 CalsaBOT CLI v${VERSION}                ║
 ║               Assistente Pessoal Inteligente              ║
 ╠═══════════════════════════════════════════════════════════╣
@@ -22,11 +36,15 @@ console.log(`
 ║    /status   - estado do sistema                          ║
 ║    /agents   - listar agentes                             ║
 ║    /limites  - ver limites de segurança                   ║
+║    /kill     - encerrar tudo limpamente                   ║
 ║    /exit     - sair                                       ║
 ║                                                           ║
 ║  Ou escreve qualquer pergunta/comando em linguagem natural║
-╚═══════════════════════════════════════════════════════════╝
-`);
+╚═══════════════════════════════════════════════════════════╝${colors.reset}
+`;
+
+console.log(banner);
+if (DARK_MODE) console.log(`${colors.dim}🌙 Dark Mode ON (desativa com CALSABOT_DARK=false)${colors.reset}`);
 
 security.logAction(userId, 'cli-started');
 
@@ -46,6 +64,18 @@ rl.on('line', async (line) => {
   if (input.toLowerCase() === '/exit' || input.toLowerCase() === '/sair') {
     console.log('\n👋 Até breve! CalsaBOT encerrado.\n');
     security.logAction(userId, 'cli-exit');
+    rl.close();
+    process.exit(0);
+  }
+
+  // 🛑 Kill command - encerrar tudo limpamente
+  if (input.toLowerCase() === '/kill') {
+    console.log('\n🛑 A encerrar CalsaBOT...');
+    console.log('   ├── Guardando rate-limits...');
+    security.saveRateLimits?.(); // Guardar rate-limits se disponível
+    console.log('   ├── Fechando conexões...');
+    security.logAction(userId, 'cli-kill');
+    console.log('   └── ✅ Encerrado com sucesso.\n');
     rl.close();
     process.exit(0);
   }

@@ -8,8 +8,8 @@ function parseIntent(prompt) {
 
   // Criar PDF
   if (lower.includes('pdf') && (lower.includes('cria') || lower.includes('gera') || lower.includes('faz'))) {
-    const folderMatch = prompt.match(/pasta\s+([\w\/\\]+)/i);
-    const folder = folderMatch ? folderMatch[1] : 'Documentos/eventos';
+    const folderMatch = prompt.match(/pasta\s+([\w\/\\.\-]+)/i);
+    const folder = folderMatch?.[1]?.trim() ?? './Documentos/eventos';
     return { intent: 'create_pdf', entities: { folder: folder } };
   }
 

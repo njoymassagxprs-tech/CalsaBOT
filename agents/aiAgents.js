@@ -7,6 +7,21 @@
 
 require('dotenv').config();
 
+// 🚀 Keep-alive via undici (motor do fetch nativo do Node.js 18+)
+let dispatcher;
+try {
+  const { Agent } = require('undici');
+  dispatcher = new Agent({
+    keepAliveTimeout: 30000,
+    keepAliveMaxTimeout: 60000,
+    connections: 10,
+    pipelining: 1
+  });
+} catch (e) {
+  // undici não instalado, usar fetch padrão (sem keep-alive)
+  dispatcher = undefined;
+}
+
 // Suporta ambos os nomes: GROQ_API_KEY (correto) ou GROK_API_KEY (legacy)
 const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.GROK_API_KEY;
 const GROQ_MODEL = 'llama-3.3-70b-versatile'; // Modelo recomendado Groq
@@ -25,11 +40,13 @@ async function askAI(prompt, options = {}) {
   const systemPrompt = options.system || 'És o CalsaBOT, um assistente pessoal inteligente. Responde de forma clara, concisa e útil em português. Evita repetir informação.';
 
   try {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    // 🚀 Usa dispatcher com keep-alive se disponível
+    const fetchOptions = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GROQ_API_KEY}`
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Connection': 'keep-alive'
       },
       body: JSON.stringify({
         model: GROQ_MODEL,
@@ -42,7 +59,14 @@ async function askAI(prompt, options = {}) {
         top_p: 0.9,
         frequency_penalty: 0.5 // Penaliza repetições
       })
-    });
+    };
+    
+    // Adicionar dispatcher se undici estiver disponível
+    if (dispatcher) {
+      fetchOptions.dispatcher = dispatcher;
+    }
+    
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', fetchOptions);
 
     if (!response.ok) {
       const errText = await response.text();

@@ -12,6 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 const readline = require('readline');
+const crypto = require('crypto');
 
 // ───── CONFIGURAÇÕES ─────
 const PROJECT_ROOT = path.resolve(__dirname, '..');
@@ -32,9 +33,48 @@ const ALLOWED_WRITE = [
 const MAX_EXEC_PER_MIN = 5;
 const EXEC_TIMEOUT_MS = 5000;
 const LOG_FILE = path.join(PROJECT_ROOT, 'memory', 'interactions.log');
+const RATE_LIMIT_FILE = path.join(PROJECT_ROOT, 'memory', 'rate-limit.json');
+const MAX_MEMORY_MB = 128; // Limite de memória para sandbox
 
 // ───── ESTADO ─────
-const execCount = new Map(); // userId -> array de timestamps
+let execCount = new Map(); // userId -> array de timestamps
+
+// 💾 Carregar rate-limits persistidos ao iniciar
+function loadRateLimits() {
+  try {
+    if (fs.existsSync(RATE_LIMIT_FILE)) {
+      const data = JSON.parse(fs.readFileSync(RATE_LIMIT_FILE, 'utf-8'));
+      const now = Date.now();
+      const minuteAgo = now - 60000;
+      
+      // Filtrar apenas entradas válidas (menos de 1 minuto)
+      for (const [userId, timestamps] of Object.entries(data)) {
+        const validTimestamps = timestamps.filter(t => t > minuteAgo);
+        if (validTimestamps.length > 0) {
+          execCount.set(userId, validTimestamps);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('⚠️ Erro ao carregar rate-limits:', err.message);
+  }
+}
+
+// 💾 Guardar rate-limits para persistência
+function saveRateLimits() {
+  try {
+    const logDir = path.dirname(RATE_LIMIT_FILE);
+    if (!fs.existsSync(logDir)) {
+      fs.mkdirSync(logDir, { recursive: true });
+    }
+    fs.writeFileSync(RATE_LIMIT_FILE, JSON.stringify(Object.fromEntries(execCount), null, 2));
+  } catch (err) {
+    console.warn('⚠️ Erro ao guardar rate-limits:', err.message);
+  }
+}
+
+// Carregar ao iniciar
+loadRateLimits();
 
 // ───── WHITELIST DE CAMINHOS ─────
 function isAllowedPath(targetPath, mode = 'read') {
@@ -82,6 +122,9 @@ function recordExecution(userId) {
   const counts = execCount.get(userId) || [];
   counts.push(Date.now());
   execCount.set(userId, counts);
+  
+  // Persistir automaticamente após cada execução
+  saveRateLimits();
 }
 
 function getRemainingExecutions(userId) {
@@ -91,11 +134,18 @@ function getRemainingExecutions(userId) {
   return Math.max(0, MAX_EXEC_PER_MIN - counts.length);
 }
 
+// ───── HASH DE USER ID (PRIVACIDADE) ─────
+function hashUserId(userId) {
+  return crypto.createHash('sha256').update(userId).digest('hex').slice(0, 8);
+}
+
 // ───── LOGGER ─────
 function logAction(userId, action, details = null) {
   const timestamp = new Date().toISOString();
+  // 🔒 Hash do userId para privacidade (não expor identificadores reais)
+  const hashedId = hashUserId(userId);
   const detailsStr = details ? ' ' + JSON.stringify(details) : '';
-  const line = `[${timestamp}] ${userId} | ${action}${detailsStr}\n`;
+  const line = `[${timestamp}] ${hashedId} | ${action}${detailsStr}\n`;
   
   try {
     // Garantir que a pasta existe
@@ -231,6 +281,48 @@ function getUserId(context) {
   return `cli:${process.env.USERNAME || process.env.USER || 'local'}`;
 }
 
+// ───── GLOBAL ERROR HANDLER & MEMORY WATCHER ─────
+// 🛡️ Kill-switch para erros não tratados
+process.on('uncaughtException', (err) => {
+  console.error('💥 Erro fatal não tratado:', err.message);
+  saveRateLimits(); // Guardar estado antes de sair
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 Promise rejeitada não tratada:', reason);
+  saveRateLimits();
+});
+
+// 📊 Memory watcher - alerta se usar muita RAM
+const MEMORY_CHECK_INTERVAL = 30000; // 30 segundos
+setInterval(() => {
+  const used = process.memoryUsage();
+  const heapMB = Math.round(used.heapUsed / 1024 / 1024);
+  
+  if (heapMB > MAX_MEMORY_MB) {
+    console.warn(`⚠️ Memória alta: ${heapMB}MB (limite: ${MAX_MEMORY_MB}MB)`);
+    logAction('system', 'memory-warning', { heapMB, limit: MAX_MEMORY_MB });
+    
+    // Limpar rate-limits antigos para libertar memória
+    const now = Date.now();
+    const minuteAgo = now - 60000;
+    for (const [userId, timestamps] of execCount.entries()) {
+      const valid = timestamps.filter(t => t > minuteAgo);
+      if (valid.length === 0) {
+        execCount.delete(userId);
+      } else {
+        execCount.set(userId, valid);
+      }
+    }
+    
+    // Forçar garbage collection se disponível
+    if (global.gc) {
+      global.gc();
+    }
+  }
+}, MEMORY_CHECK_INTERVAL);
+
 // ───── EXPORTS ─────
 module.exports = {
   isAllowedPath,
@@ -243,7 +335,11 @@ module.exports = {
   safeWriteFile,
   safeListDir,
   getUserId,
+  hashUserId,
+  saveRateLimits,
+  loadRateLimits,
   ALLOWED_READ,
   ALLOWED_WRITE,
-  MAX_EXEC_PER_MIN
+  MAX_EXEC_PER_MIN,
+  MAX_MEMORY_MB
 };
